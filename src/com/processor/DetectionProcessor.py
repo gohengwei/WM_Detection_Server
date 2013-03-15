@@ -59,12 +59,13 @@ class VisualizerClass(Visualizer):
         self.textBrowser = QTextBrowser(self)
         self.graph = QGroupBox("test",self)
         '''
+
         self.graph.setToolTip('This is a <b>QWidget</b> widget')
-        self.dpi = 100
+        self.dpi = 50
         #testLayout = QVBoxLayout()
         #testLayout.addWidget(self.graph)
         #self.graph.setLayout(testLayout)
-        self.fig = Figure((8,6), dpi=self.dpi)
+        self.fig = Figure((16,12), dpi=self.dpi)
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self.graph)
         self.ax = self.fig.add_subplot(211,autoscale_on='True',title="RSSI vs Time")
@@ -91,7 +92,8 @@ class VisualizerClass(Visualizer):
         '''
         self.initRefreshBtn()
         #self.center()
-        self.initCB()
+        self.initCB() 
+        #self.setGeometry(500,500,500,500)
         self.show()
         
         #self.setWindowTitle('Menubar')    
@@ -99,11 +101,12 @@ class VisualizerClass(Visualizer):
         
     
     def center(self):
-        
+        #self.setGeometry(500,500,500,300)
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
+       
         
     #  def initGraph(self):    
         

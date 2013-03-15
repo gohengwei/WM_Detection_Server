@@ -107,8 +107,8 @@ class ComMonitorThread(threading.Thread):
                 #print time_arr[1,data_ctr -1];
                 if self.data_ctr > 50 :      
                     # print "file_ctr:" + str(self.file_ctr)
-                    print self.time_arr[:,self.data_ctr -1]
-                    print self.time_in
+                    #print self.time_arr[:,self.data_ctr -1]
+                    #print self.time_in
                     f = open('/home/gohew/workspace/WM_Detection_Server/src/data/manifest','r+')
                     save(self.name + str(self.file_ctr),self.data_in[0:3,0:self.data_ctr])
                     save(self.name + str(self.file_ctr) + "t",self.time_arr[0:3,0:self.data_ctr])

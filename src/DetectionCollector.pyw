@@ -3,7 +3,7 @@ A simple demonstration of a serial port monitor that plots live
 data using PyQwt.
 
 The monitor expects to receive single-byte data packets on the 
-serial port. Each received byte is understood as a temperature
+serial port. Each received byte is underslsutood as a
 reading and is shown on a live chart.
 
 When the monitor is active, you can turn the 'Update speed' knob
@@ -57,7 +57,7 @@ class PlottingDataMonitor(QMainWindow):
         plot.setAxisTitle(Qwt.QwtPlot.xBottom, 'Time')
         plot.setAxisScale(Qwt.QwtPlot.xBottom, 0, 10, 1)
         plot.setAxisTitle(Qwt.QwtPlot.yLeft, 'RSSI')
-        plot.setAxisScale(Qwt.QwtPlot.yLeft, 35, 75, 10)
+        plot.setAxisScale(Qwt.QwtPlot.yLeft, 35, 75, 20)
         plot.replot()
         
         curve = Qwt.QwtPlotCurve('')
@@ -86,7 +86,7 @@ class PlottingDataMonitor(QMainWindow):
         knob.setRange(0, 250, 0, 1)
         knob.setScaleMaxMajor(10)
         knob.setKnobWidth(50)
-        knob.setValue(240)
+        knob.setValue(20)
         return knob
 
     def create_status_bar(self):
@@ -338,8 +338,9 @@ class PlottingDataMonitor(QMainWindow):
             data was received since the last update. If not, 
             nothing is updated.
         """
-        statsMsg = ""    
-        self.debugPanel.setText(self.com_monitor.msg)
+        statsMsg = ""   
+        if self.com_monitor: 
+            self.debugPanel.setText(self.com_monitor.msg)
         self.debugPanel.verticalScrollBar().setValue(
     self.debugPanel.verticalScrollBar().maximum())
         for i in range(0,3):
