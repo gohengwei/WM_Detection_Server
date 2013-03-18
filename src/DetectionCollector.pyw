@@ -339,7 +339,8 @@ class PlottingDataMonitor(QMainWindow):
             nothing is updated.
         """
         statsMsg = ""    
-        self.debugPanel.setText(self.com_monitor.msg)
+        if self.com_monitor:
+            self.debugPanel.setText(self.com_monitor.msg)
         self.debugPanel.verticalScrollBar().setValue(
     self.debugPanel.verticalScrollBar().maximum())
         for i in range(0,3):

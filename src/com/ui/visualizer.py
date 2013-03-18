@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'visualizer.ui'
 #
-# Created: Tue Mar 12 02:44:34 2013
+# Created: Sun Mar 17 15:45:26 2013
 #      by: PyQt4 UI code generator 4.10
 #
 # WARNING! All changes made in this file will be lost!
@@ -35,7 +35,7 @@ class Ui_Visualizer(object):
         self.centralwidget.setSizePolicy(sizePolicy)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
         self.verticalLayoutWidget = QtGui.QWidget(self.centralwidget)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(880, 40, 151, 401))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(870, 90, 151, 401))
         self.verticalLayoutWidget.setObjectName(_fromUtf8("verticalLayoutWidget"))
         self.verticalLayout = QtGui.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setMargin(0)
@@ -57,6 +57,9 @@ class Ui_Visualizer(object):
         self.textBrowser.setLineWrapColumnOrWidth(2)
         self.textBrowser.setObjectName(_fromUtf8("textBrowser"))
         self.verticalLayout.addWidget(self.textBrowser)
+        self.fourierBtn = QtGui.QPushButton(self.verticalLayoutWidget)
+        self.fourierBtn.setObjectName(_fromUtf8("fourierBtn"))
+        self.verticalLayout.addWidget(self.fourierBtn)
         self.graph = QtGui.QWidget(self.centralwidget)
         self.graph.setGeometry(QtCore.QRect(40, 10, 801, 621))
         self.graph.setObjectName(_fromUtf8("graph"))
@@ -87,7 +90,8 @@ class Ui_Visualizer(object):
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
 "</style></head><body style=\" font-family:\'Ubuntu\'; font-size:11pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">asdasdasdasdsd</p></body></html>", None))
+"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>", None))
+        self.fourierBtn.setText(_translate("Visualizer", "Fourier Analysis", None))
         self.menuHowdy.setTitle(_translate("Visualizer", "File", None))
         self.menuAbout.setTitle(_translate("Visualizer", "About", None))
 

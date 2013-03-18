@@ -18,6 +18,7 @@ from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as Naviga
 from matplotlib.figure import Figure
 import matplotlib.mlab as mlab
 from com.ui.visualizer import Visualizer
+from com.processor.FourierClass import FourierClass
 import numpy as np
 #UI imports
 from PyQt4.QtCore import *
@@ -41,7 +42,7 @@ class VisualizerClass(Visualizer):
     name = "data"
     color = array(['r','b','g'])
     xbee = array(['top','mid','bot'])
-    
+    fAnalysis = None
     def __init__(self):
         super(VisualizerClass, self).__init__()
         
@@ -59,44 +60,68 @@ class VisualizerClass(Visualizer):
         self.textBrowser = QTextBrowser(self)
         self.graph = QGroupBox("test",self)
         '''
-        self.graph.setToolTip('This is a <b>QWidget</b> widget')
         self.dpi = 100
         #testLayout = QVBoxLayout()
         #testLayout.addWidget(self.graph)
         #self.graph.setLayout(testLayout)
-        self.fig = Figure((8,6), dpi=self.dpi)
+        self.fig = Figure((8,4), dpi=self.dpi)
         self.canvas = FigureCanvas(self.fig)
-        self.canvas.setParent(self.graph)
+        self.canvas.setParent(self.centralwidget)
         self.ax = self.fig.add_subplot(211,autoscale_on='True',title="RSSI vs Time")
         self.bx = self.fig.add_subplot(212,autoscale_on='True',title="Frequency Amplitude vs Frequency")
+        self.mpl_toolbar = NavigationToolbar(self.canvas, self.centralwidget)
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.canvas)
+        vbox.addWidget(self.mpl_toolbar)
         
-        #self.initGraph()
-        '''
         self.data_l = QLabel("Data Panel")
+        self.refreshBtn = QPushButton('Refresh')
         self.comboBox = QComboBox()
+        self.fourierBtn = QPushButton("Fourier Analysis")
         dataPanel_layout = QVBoxLayout()
         dataPanel_layout.addWidget(self.data_l)
         dataPanel_layout.addWidget(self.refreshBtn)
         dataPanel_layout.addWidget(self.comboBox)
         dataPanel_layout.addWidget(self.textBrowser)
+        dataPanel_layout.addWidget(self.fourierBtn)
         # Main frame and layout
         #
-        main_layout = QHBoxLayout()
+        #main_layout = QHBoxLayout()
         #main_layout.addLayout(testLayout)
         #main_layout.addStretch(1)
-        main_layout.addLayout(dataPanel_layout)
-        main_layout.addWidget(self.graph)
-        self.main_frame.setLayout(main_layout)
-        self.setCentralWidget(self.main_frame)
-        '''
+        #main_layout.addLayout(dataPanel_layout)
+        #main_layout.addWidget(self.graph)
+        #self.main_frame.setLayout(main_layout)
+        #self.setCentralWidget(self.main_frame)
+        
+        hbox = QHBoxLayout()
+        hbox.addLayout(vbox)
+        hbox.addLayout(dataPanel_layout)
+        #self.centralwidget.layout()
+        #hbox.addLayout(self.verticalLayout)
+        self.centralwidget.setLayout(hbox)
+        self.setCentralWidget(self.centralwidget)
+        #self.initGraph()
+        
+        
         self.initRefreshBtn()
         #self.center()
         self.initCB()
+        self.connect(self.fourierBtn,SIGNAL("clicked()"),self.openAnalysis)
         self.show()
+        
         
         #self.setWindowTitle('Menubar')    
 
+    def save_plot(self):
+        file_choices = "PNG (*.png)|*.png"
         
+        path = unicode(QFileDialog.getSaveFileName(self, 
+                        'Save file', '', 
+                        file_choices))
+        if path:
+            self.canvas.print_figure(path, dpi=self.dpi)
+            self.statusBar().showMessage('Saved to %s' % path, 2000)    
     
     def center(self):
         
@@ -107,7 +132,9 @@ class VisualizerClass(Visualizer):
         
     #  def initGraph(self):    
         
-        
+    def openAnalysis(self):
+        self.fAnalysis = FourierClass()
+        self.fAnalysis.show()
     def initRefreshBtn(self):
         self.refreshBtn.clicked.connect(self.buttonClicked)
         
@@ -118,11 +145,13 @@ class VisualizerClass(Visualizer):
             self.fourier_val[i,0:self.data_ctr],freq, self.sample_rate[i] = self.calcFFT(self.data_in[i,0:self.data_ctr], self.time_arr[i,0:self.data_ctr])
             self.ax.set_xlabel('Time(ms)')
             self.ax.set_ylabel('RSSI')
-            print self.data_in
+            #print self.data_in
             self.ax.plot(self.time_arr[i,0:self.data_ctr -2],self.data_in[i,0:self.data_ctr -2],self.color[i],label=self.xbee[i])
             #plt.subplot(2,3 , i + 4)
+            print freq
             self.bx.set_xlabel('Freq(Hz)')
             self.bx.set_ylabel('Amplitude')
+            self.bx.axis([-150,150,0,200])
             self.bx.plot(freq,self.fourier_val[i,0:self.data_ctr],self.color[i],label=self.xbee[i]) 
         '''     
         handles, labels = self.ax.get_legend_handles_labels()
@@ -172,7 +201,7 @@ class VisualizerClass(Visualizer):
         sample_rate = _time_arr[_data_ctr -1]/_data_ctr
         
         #Calculate Frequency bins with frequency shifting
-        freq = fft.fftfreq(_data_ctr,sample_rate)
+        freq = fft.fftfreq(_data_ctr,sample_rate/1000)
         freq = fft.fftshift(freq)
             
         #Calculate Fourier Transform with Mean Normalization 
