@@ -17,9 +17,10 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 from matplotlib.figure import Figure
 import matplotlib.mlab as mlab
-from com.ui.visualizer import Visualizer
+#from com.ui.visualizer import Visualizer
 from com.processor.FourierClass import FourierClass
 import numpy as np
+from com.svm.SVMProblemGenerator import SVMProblemGenerator
 #UI imports
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -33,20 +34,20 @@ import os
             Global Variables
     *****************************************************
 '''
-class VisualizerClass(Visualizer):
+class VisualizerClass(QWidget):
     data_in = zeros((3,5000)) 
     time_arr = zeros((3,5000)) 
     sample_rate = [0,0,0]
     fourier_val = zeros((3,5000)) 
     data_ctr = 0
     name = "data"
-    color = array(['r','b','g'])
+    color = array(['r','g','b'])
     xbee = array(['top','mid','bot'])
     fAnalysis = None
     def __init__(self):
         super(VisualizerClass, self).__init__()
         
-        Visualizer.__init__(self)
+        #Visualizer.__init__(self)
         self.initUI()
         self.center()
         
@@ -56,34 +57,43 @@ class VisualizerClass(Visualizer):
         '''
         self.main_frame = QWidget()
         self.setWindowTitle("Analyze Waveform")
-        self.refreshBtn = QPushButton('Refresh',self)
-        self.textBrowser = QTextBrowser(self)
+        
         self.graph = QGroupBox("test",self)
         '''
+        self.textBrowser = QTextBrowser(self)
+        
         self.dpi = 100
         #testLayout = QVBoxLayout()
         #testLayout.addWidget(self.graph)
         #self.graph.setLayout(testLayout)
-        self.fig = Figure((8,4), dpi=self.dpi)
+        self.fig = Figure((10,4), dpi=self.dpi)
         self.canvas = FigureCanvas(self.fig)
-        self.canvas.setParent(self.centralwidget)
+        self.canvas.setParent(self)
         self.ax = self.fig.add_subplot(211,autoscale_on='True',title="RSSI vs Time")
         self.bx = self.fig.add_subplot(212,autoscale_on='True',title="Frequency Amplitude vs Frequency")
-        self.mpl_toolbar = NavigationToolbar(self.canvas, self.centralwidget)
+        self.mpl_toolbar = NavigationToolbar(self.canvas, self)
         vbox = QVBoxLayout()
         vbox.addWidget(self.canvas)
         vbox.addWidget(self.mpl_toolbar)
         
         self.data_l = QLabel("Data Panel")
+        self.data_l2 = QLabel("Select Directory")
+        self.data_l3 = QLabel("Select File")
         self.refreshBtn = QPushButton('Refresh')
+        self.catBox = QComboBox()
         self.comboBox = QComboBox()
         self.fourierBtn = QPushButton("Fourier Analysis")
+        self.svmBtn = QPushButton("Generate SVM Problem")
         dataPanel_layout = QVBoxLayout()
         dataPanel_layout.addWidget(self.data_l)
         dataPanel_layout.addWidget(self.refreshBtn)
+        dataPanel_layout.addWidget(self.data_l2)
+        dataPanel_layout.addWidget(self.catBox)
+        dataPanel_layout.addWidget(self.data_l3)
         dataPanel_layout.addWidget(self.comboBox)
         dataPanel_layout.addWidget(self.textBrowser)
         dataPanel_layout.addWidget(self.fourierBtn)
+        dataPanel_layout.addWidget(self.svmBtn)
         # Main frame and layout
         #
         #main_layout = QHBoxLayout()
@@ -99,8 +109,8 @@ class VisualizerClass(Visualizer):
         hbox.addLayout(dataPanel_layout)
         #self.centralwidget.layout()
         #hbox.addLayout(self.verticalLayout)
-        self.centralwidget.setLayout(hbox)
-        self.setCentralWidget(self.centralwidget)
+        self.setLayout(hbox)
+        #self.setCentralWidget(self.centralwidget)
         #self.initGraph()
         
         
@@ -108,11 +118,20 @@ class VisualizerClass(Visualizer):
         #self.center()
         self.initCB()
         self.connect(self.fourierBtn,SIGNAL("clicked()"),self.openAnalysis)
+        self.connect(self.svmBtn,SIGNAL("clicked()"),self.openSVMGenerator)
         self.show()
         
+    def openDir(self):
+        for dirname, dirnames, filenames in os.walk('/home/gohew/workspace/WM_Detection_Server/src/data'):
+        # print path to all subdirectories first.
+            for subdirname in dirnames:
+                print os.path.join(dirname, subdirname)
+                self.catBox.addItem(str(subdirname))
+    
+    def openSVMGenerator(self):
+        self.SVMClass = SVMProblemGenerator()
+        self.SVMClass.generate()
         
-        #self.setWindowTitle('Menubar')    
-
     def save_plot(self):
         file_choices = "PNG (*.png)|*.png"
         
@@ -147,8 +166,6 @@ class VisualizerClass(Visualizer):
             self.ax.set_ylabel('RSSI')
             #print self.data_in
             self.ax.plot(self.time_arr[i,0:self.data_ctr -2],self.data_in[i,0:self.data_ctr -2],self.color[i],label=self.xbee[i])
-            #plt.subplot(2,3 , i + 4)
-            print freq
             self.bx.set_xlabel('Freq(Hz)')
             self.bx.set_ylabel('Amplitude')
             self.bx.axis([-150,150,0,200])
@@ -165,16 +182,22 @@ class VisualizerClass(Visualizer):
             
     def initCB(self):
         
+        self.catBox.clear()
+        self.openDir()
+        self.comboBox.activated[str].connect(self.onActivated)
+        self.catBox.activated[str].connect(self.onCatActivated)
+        #self.connect(self.catBox,SIGNAL("onActivated()"),self.onCatActivated)
+           
+    def onCatActivated(self,text):
         self.comboBox.clear()
-        os.chdir("/home/gohew/workspace/WM_Detection_Server/src/data")
+        os.chdir("/home/gohew/workspace/WM_Detection_Server/src/data/" + text)
         for files in os.listdir("."):
             if files.endswith(".npy"):
                 if files.endswith("t.npy"):
                     print "t"
                 else: 
                     self.comboBox.addItem(str(files))
-        self.comboBox.activated[str].connect(self.onActivated)
-           
+        
     def onActivated(self,text):
         self.ax.clear()
         self.bx.clear()
@@ -186,7 +209,6 @@ class VisualizerClass(Visualizer):
         index = filename.indexOf(".npy")
         self.data_in = np.load(str(filename))
         self.data_ctr = self.data_in.size/3
-        print filename[0:index] +"t.npy"
         self.time_arr = np.load(str(filename[0:index]) +"t.npy")
         
     '''
@@ -222,6 +244,7 @@ class VisualizerClass(Visualizer):
         fourier_val = abs(fourier_val)
     
         return (fourier_val,freq, sample_rate)
+   
           
 '''
 def main():

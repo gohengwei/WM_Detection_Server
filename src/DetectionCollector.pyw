@@ -19,6 +19,7 @@ from PyQt4.QtGui import *
 import PyQt4.Qwt5 as Qwt
 import Queue
 import numpy as np
+from com.signal.SignalProcessing import SignalClass
 
 from com.processor.DetectionProcessor import VisualizerClass
 from com_monitor import ComMonitorThread
@@ -28,13 +29,17 @@ from livedatafeed import LiveDataFeed
 
 class PlottingDataMonitor(QMainWindow):
     xbee = ["TOP","MID","BOT"]
+    penColor = ["red","limegreen","blue"]
     def __init__(self, parent=None):
+        self.signal = SignalClass()
         super(PlottingDataMonitor, self).__init__(parent)
         self.setWindowTitle("Detection Monitor and Collector")
         self.monitor_active = False
         self.com_monitor = None
         self.com_data_q = None
         self.com_error_q = None
+        self.time_arr = None
+        self.data_arr = None
         self.msg = None
         self.livefeed = [LiveDataFeed(),LiveDataFeed(),LiveDataFeed()]
         self.temperature_samples = [list(),list(),list()]
@@ -57,18 +62,46 @@ class PlottingDataMonitor(QMainWindow):
         plot.setAxisTitle(Qwt.QwtPlot.xBottom, 'Time')
         plot.setAxisScale(Qwt.QwtPlot.xBottom, 0, 10, 1)
         plot.setAxisTitle(Qwt.QwtPlot.yLeft, 'RSSI')
-        plot.setAxisScale(Qwt.QwtPlot.yLeft, 35, 75, 10)
+        plot.setAxisScale(Qwt.QwtPlot.yLeft, 30, 75, 20)
         plot.replot()
         
         curve = Qwt.QwtPlotCurve('')
         curve.setRenderHint(Qwt.QwtPlotItem.RenderAntialiased)
-        pen = QPen(QColor('limegreen'))
-        pen.setWidth(2)
-        curve.setPen(pen)
         curve.attach(plot)
         
         return plot, curve
 
+    def create_fftPlot(self):
+        self.fftplot1 = Qwt.QwtPlot(self)
+        self.fftplot1.setCanvasBackground(Qt.black)
+        self.fftplot1.setAxisTitle(Qwt.QwtPlot.xBottom, 'Time')
+        self.fftplot1.setAxisScale(Qwt.QwtPlot.xBottom, 0, 2500, 500)
+        self.fftplot1.setAxisTitle(Qwt.QwtPlot.yLeft, 'RSSI')
+        self.fftplot1.setAxisScale(Qwt.QwtPlot.yLeft, 40, 75, 10)
+        self.fftplot1.replot()
+        
+        self.fftplot2 = Qwt.QwtPlot(self)
+        self.fftplot2.setCanvasBackground(Qt.black)
+        self.fftplot2.setAxisTitle(Qwt.QwtPlot.xBottom, 'Frequency')
+        self.fftplot2.setAxisScale(Qwt.QwtPlot.xBottom, -150, 150, 20)
+        self.fftplot2.setAxisTitle(Qwt.QwtPlot.yLeft, 'Amplitude')
+        self.fftplot2.setAxisScale(Qwt.QwtPlot.yLeft, 0,200, 50)
+        self.fftplot2.replot()
+        self.fftcurve = [Qwt.QwtPlotCurve(''),Qwt.QwtPlotCurve(''),Qwt.QwtPlotCurve('')]
+        self.fftcurve2 = [Qwt.QwtPlotCurve(''),Qwt.QwtPlotCurve(''),Qwt.QwtPlotCurve('')]
+        for i in range(0,3):
+            self.fftcurve[i].setRenderHint(Qwt.QwtPlotItem.RenderAntialiased)
+            pen = QPen(QColor(self.penColor[i]))
+            pen.setWidth(2)
+            self.fftcurve[i].setPen(pen)
+            self.fftcurve[i].attach(self.fftplot1)
+        for i in range(0,3):
+            self.fftcurve2[i].setRenderHint(Qwt.QwtPlotItem.RenderAntialiased)
+            pen = QPen(QColor(self.penColor[i]))
+            pen.setWidth(2)
+            self.fftcurve2[i].setPen(pen)
+            self.fftcurve2[i].attach(self.fftplot2)
+        
     def create_thermo(self):
         thermo = Qwt.QwtThermo(self)
         thermo.setPipeWidth(6)
@@ -86,7 +119,7 @@ class PlottingDataMonitor(QMainWindow):
         knob.setRange(0, 250, 0, 1)
         knob.setScaleMaxMajor(10)
         knob.setKnobWidth(50)
-        knob.setValue(240)
+        knob.setValue(20)
         return knob
 
     def create_status_bar(self):
@@ -98,23 +131,27 @@ class PlottingDataMonitor(QMainWindow):
         #
         portname_l, self.portname = self.make_data_box('Port:')
         dataname_l, self.dataname = self.make_data_box('File Descriptor')
+        self.maniBtn = QPushButton("Reset Manifest")
+        self.connect(self.maniBtn,SIGNAL("clicked()"),self.ResetManifest)
         self.dataname.setEnabled(True)
-        
-        portname_layout = QHBoxLayout()
+        portname_layout = QVBoxLayout()
         portname_layout.addWidget(portname_l)
         portname_layout.addWidget(self.portname, 0)
         portname_layout.addWidget(dataname_l)
         portname_layout.addWidget(self.dataname)
-        portname_layout.addStretch(1)
+        portname_layout.addWidget(self.maniBtn)
+        portname_layout.addStretch(2)
         portname_groupbox = QGroupBox('COM Port')
         portname_groupbox.setLayout(portname_layout)
-        
         # Plot and thermo
         #
         self.plot = [Qwt.QwtPlot(),Qwt.QwtPlot(),Qwt.QwtPlot()]
         self.curve = [Qwt.QwtPlotCurve(),Qwt.QwtPlotCurve(),Qwt.QwtPlotCurve()]
         for i in range(0,3):
             self.plot[i], self.curve[i] = self.create_plot()
+            pen = QPen(QColor(self.penColor[i]))
+            pen.setWidth(2)
+            self.curve[i].setPen(pen)
         '''
         self.thermo = self.create_thermo()
         thermo_l = QLabel('Average')
@@ -123,20 +160,16 @@ class PlottingDataMonitor(QMainWindow):
         thermo_layout.addWidget(self.thermo)
         thermo_layout.setSpacing(5)
         '''
-        
+        self.create_fftPlot()
         self.updatespeed_knob = self.create_knob()
         self.connect(self.updatespeed_knob, SIGNAL('valueChanged(double)'),
             self.on_knob_change)
         self.knob_l = QLabel('Update speed = %s (Hz)' % self.updatespeed_knob.value())
         self.knob_l.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-        self.analyzeBtn = QPushButton("Analyze Waveform",self)
-        self.connect(self.analyzeBtn,SIGNAL("clicked()"),self.openAnalysis)
-        self.Analysis = None
         
         knob_layout = QVBoxLayout()
         knob_layout.addWidget(self.updatespeed_knob)
         knob_layout.addWidget(self.knob_l)
-        knob_layout.addWidget(self.analyzeBtn)
         
         self.debug_l = QLabel('Messages Panel')
         self.debug_l.setAlignment(Qt.AlignLeft)
@@ -183,33 +216,62 @@ class PlottingDataMonitor(QMainWindow):
         debug_layout = QHBoxLayout()
         debug_layout.addLayout(panel_layout)
         debug_layout.addLayout(stats_layout)
+        debug_layout.addWidget(portname_groupbox)
         #debug_layout.addWidget(self.debugPanel)
         debug_layout.addLayout(knob_layout)
         
+        fftplot_layout = QVBoxLayout()
+        fft_groupbox = QGroupBox('Current Data Analysis')
+        fftplot_layout.addWidget(self.fftplot1)
+        fftplot_layout.addWidget(self.fftplot2)
+        fft_groupbox.setLayout(fftplot_layout)
         plot_layout = QVBoxLayout()
         plot_layout.addWidget(self.plot[0])
         plot_layout.addWidget(self.plot[1])
         plot_layout.addWidget(self.plot[2])
         #plot_layout.addLayout(thermo_layout)
-        plot_layout.addLayout(debug_layout)
-        
-        plot_groupbox = QGroupBox('Xbees')
+        plot_groupbox = QGroupBox('Xbee RSSI Stream')
         plot_groupbox.setLayout(plot_layout)
+        overallplot_layout = QHBoxLayout()
+        overallplot_layout.addWidget(plot_groupbox)
+        overallplot_layout.addWidget(fft_groupbox)
+        
+        top_layout = QVBoxLayout()
+        top_layout.addLayout(overallplot_layout)
+        top_layout.addLayout(debug_layout)
+    
         
         # Main frame and layout
         #
+        self.main_tab = QTabWidget()
+        
         self.main_frame = QWidget()
         main_layout = QVBoxLayout()
-        main_layout.addWidget(portname_groupbox)
-        main_layout.addWidget(plot_groupbox)
+        #main_layout.addWidget(portname_groupbox)
+        main_layout.addLayout(top_layout)
         main_layout.addStretch(1)
         self.main_frame.setLayout(main_layout)
         
-        self.setCentralWidget(self.main_frame)
+        self.main_tab.addTab(self.main_frame, "Data Collection")
+        self.main_tab.addTab(VisualizerClass(), "Waveform Analysis")
+        self.setCentralWidget(self.main_tab)
         self.set_actions_enable_state()
     def openAnalysis(self):
-        self.Analysis = VisualizerClass()
-        self.Analysis.show()
+        #self.Analysis = VisualizerClass()
+        #self.Analysis.show()
+        '''
+        '''
+    
+    def ResetManifest(self):
+        num = "0"
+        f = open('/home/gohew/workspace/WM_Detection_Server/src/data/fresh/manifest','w+')
+        f.seek(0)
+        f.write(num)
+        if self.com_monitor:
+            self.com_monitor.file_ctr = 0
+        f.close()
+        self.com_monitor.msg = self.com_monitor.msg + "<b>[Manifest reset]</b><br>"
+        
     def create_menu(self):
         self.file_menu = self.menuBar().addMenu("&File")
         
@@ -288,7 +350,7 @@ class PlottingDataMonitor(QMainWindow):
         self.data_q = [Queue.Queue(),Queue.Queue(),Queue.Queue()]
         self.error_q = Queue.Queue()
         self.msg = ""
-        self.com_monitor = ComMonitorThread(
+        self.com_monitor = ComMonitorThread(self,
             self.data_q,
             self.error_q,
             self.msg, self.dataname.text(),
@@ -334,12 +396,21 @@ class PlottingDataMonitor(QMainWindow):
 
     def update_monitor(self):
         """ Updates the state of the monitor window with new 
-            data. The livefeed is used to find out whether new
+            data. The livefeed is used to find out whether new,
             data was received since the last update. If not, 
             nothing is updated.
         """
         statsMsg = ""    
         if self.com_monitor:
+            if self.data_arr != None and self.time_arr != None:
+                for i in range(0,3):
+                    self.fftcurve[i].setData(self.time_arr[i,:], self.data_arr[i,:])
+                    self.fftplot1.replot()
+                self.fftplot1.setAxisScale(Qwt.QwtPlot.xBottom, 0, self.time_arr[1,self.time_arr.size/3 -1], 500)
+                for i in range(0,3):
+                    fourier_val ,freq, rate = self.signal.calcFFT(self.data_arr[i,:], self.time_arr[i,:])
+                    self.fftcurve2[i].setData(freq, fourier_val)
+                    self.fftplot2.replot()
             self.debugPanel.setText(self.com_monitor.msg)
         self.debugPanel.verticalScrollBar().setValue(
     self.debugPanel.verticalScrollBar().maximum())
@@ -357,13 +428,17 @@ class PlottingDataMonitor(QMainWindow):
                 
                 avg = sum(ydata) / (len(ydata))
                 std = np.std(np.array(ydata))
-                statsMsg = statsMsg + "<b>XBEE" + self.xbee[i] + "<br>mean</b>:" + str(round(avg,2)) + " " + " <b>std</b>:" + str(round(std,2)) + "<br>"
+                statsMsg = statsMsg + "<b>XBEE" + self.xbee[i] + ": mean</b>:" + str(round(avg,2)) + " " + " <b>std</b>:" + str(round(std,2)) + "<br>"
                 self.plot[i].setAxisScale(Qwt.QwtPlot.xBottom, xdata[0], max(20, xdata[-1]))
                 self.curve[i].setData(xdata, ydata)
                 self.plot[i].replot()
         self.statsPanel.setText(statsMsg)
                 #self.thermo.setValue(avg)
-            
+    
+    def plotCapture(self,data_arr,time_arr):
+        self.data_arr = data_arr
+        self.time_arr = time_arr
+        
     def read_serial_data(self):
         """ Called periodically by the update timer to read data
             from the serial port.

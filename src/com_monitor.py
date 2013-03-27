@@ -46,7 +46,7 @@ class ComMonitorThread(threading.Thread):
     name = "data"
     isMotion = False
     
-    def __init__(   self, 
+    def __init__(   self, outer,
                     data_q, error_q, msg,file_t,  
                     port_num,
                     port_baud,
@@ -55,6 +55,7 @@ class ComMonitorThread(threading.Thread):
                     port_timeout=0.01):
         threading.Thread.__init__(self)
         
+        self.outerPlot = outer
         self.serial_port = None
         self.serial_arg = dict( port=port_num,
                                 baudrate=port_baud,
@@ -107,15 +108,16 @@ class ComMonitorThread(threading.Thread):
                 #print time_arr[1,data_ctr -1];
                 if self.data_ctr > 50 :      
                     # print "file_ctr:" + str(self.file_ctr)
-                    print self.time_arr[:,self.data_ctr -1]
-                    print self.time_in
-                    f = open('/home/gohew/workspace/WM_Detection_Server/src/data/manifest','r+')
+                    #print self.time_arr[:,self.data_ctr -1]
+                    #print self.time_in
+                    f = open('/home/gohew/workspace/WM_Detection_Server/src/data/fresh/manifest','r+')
                     save(self.name + str(self.file_ctr),self.data_in[0:3,0:self.data_ctr])
                     save(self.name + str(self.file_ctr) + "t",self.time_arr[0:3,0:self.data_ctr])
                     f.seek(0)
                     f.write(str(self.file_ctr))
                     f.close()
                     self.msg = self.msg + "Saved [" + str(time.clock()) + "]: " + self.name + str(self.file_ctr) + " Data points:"+ str(self.data_ctr) +"<br>"
+                    self.outerPlot.plotCapture(self.data_in[0:3,0:self.data_ctr],self.time_arr[0:3,0:self.data_ctr])
                     self.file_ctr = self.file_ctr + 1
                 self.data_ctr = 0
                 self.xbee_ctr = 0
@@ -151,12 +153,11 @@ class ComMonitorThread(threading.Thread):
             self.serial_port.close()
     
     def openFile(self):
-        os.chdir("/home/gohew/workspace/WM_Detection_Server/src/data")
+        os.chdir("/home/gohew/workspace/WM_Detection_Server/src/data/fresh")
         #Open data number from page
         f = open('manifest','r+')
         self.file_ctr = int(f.read())
-
+ 
     def join(self, timeout=None):
         self.alive.clear()
         threading.Thread.join(self, timeout)
-
