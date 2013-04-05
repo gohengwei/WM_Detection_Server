@@ -24,10 +24,11 @@ import matplotlib.mlab as mlab
 import numpy as np
 from com.signal.SignalProcessing import SignalClass
 
-class FourierClass(FourierWindow):
+class FourierClass(QWidget):
     '''
     classdocs
     '''
+    dir = '/home/gohew/workspace/WM_Detection_Server/src/data'
     ave_sample_rate = 4
     fourier_ave = None
     list_ctr = 0;
@@ -40,7 +41,7 @@ class FourierClass(FourierWindow):
         Constructor
         '''
         super(FourierClass, self).__init__()
-        FourierWindow.__init__(self)
+        #FourierWindow.__init__(self)
         self.signal = SignalClass()
         self.initUI()
         self.center()
@@ -51,21 +52,30 @@ class FourierClass(FourierWindow):
         self.dpi = 100
         self.fig = Figure((10,5), dpi=self.dpi)
         self.canvas = FigureCanvas(self.fig)
-        self.canvas.setParent(self.centralwidget)
+        self.canvas.setParent(self)
         self.ax = self.fig.add_subplot(111,autoscale_on='True',title="Mean Frequency Amplitude vs Frequency")
         #self.bx = self.fig.add_subplot(212,autoscale_on='True',title="Standard Deviation of Amplitude vs Frequency")
-        self.mpl_toolbar = NavigationToolbar(self.canvas, self.centralwidget)
+        self.mpl_toolbar = NavigationToolbar(self.canvas, self)
         vbox = QVBoxLayout()
         vbox.addWidget(self.canvas)
         vbox.addWidget(self.mpl_toolbar)
+        
+        self.data_l2 = QLabel("Select Directory")
+        self.dirBtn = QPushButton("Select")
+        self.dirLineEdit = QLineEdit()
+        self.dirLineEdit.setEnabled(False)
         
         self.data_l = QLabel("Select Person")
         self.refreshBtn = QPushButton('Refresh')
         self.comboBox = QComboBox()
         self.textBrowser = QTextBrowser()
         dataPanel_layout = QVBoxLayout()
+        dataPanel_layout.addWidget(self.data_l2)
+        dataPanel_layout.addWidget(self.dirBtn)
+        dataPanel_layout.addWidget(self.dirLineEdit)
         dataPanel_layout.addWidget(self.data_l)
         dataPanel_layout.addWidget(self.refreshBtn)
+        
         dataPanel_layout.addWidget(self.comboBox)
         dataPanel_layout.addWidget(self.textBrowser)
         
@@ -73,10 +83,24 @@ class FourierClass(FourierWindow):
         
         hbox.addLayout(vbox)
         hbox.addLayout(dataPanel_layout)
-        self.centralwidget.setLayout(hbox)
-        self.setCentralWidget(self.centralwidget)
+        self.setLayout(hbox)
+        #self.setCentralWidget(self.centralwidget)
         self.comboBox.activated[str].connect(self.onActivated)
+        
+        self.connect(self.dirBtn,SIGNAL("clicked()"),self.save_dir)
+        self.connect(self.refreshBtn,SIGNAL("clicked()"),self.refreshDir)
     
+    def refreshDir(self):
+        self.comboBox.clear()
+        self.openDir()
+        
+    def save_dir(self):
+        path = QFileDialog.getExistingDirectory(self, "Test","/home/gohew/workspace/WM_Detection_Server/src/data/")
+        
+        if path:
+            self.dirLineEdit.setText(str(path))
+            self.dir = str(path)
+            
     def onActivated(self,text):
         self.ax.clear()
         #self.bx.clear()
@@ -122,7 +146,7 @@ class FourierClass(FourierWindow):
         self.canvas.draw();
         
     def openDir(self):
-        for dirname, dirnames, filenames in os.walk('/home/gohew/workspace/WM_Detection_Server/src/data'):
+        for dirname, dirnames, filenames in os.walk(self.dir):
         # print path to all subdirectories first.
             for subdirname in dirnames:
                 print os.path.join(dirname, subdirname)
@@ -130,7 +154,7 @@ class FourierClass(FourierWindow):
 
     
     def calcStatistics(self,name):
-        checkDirectory = "/home/gohew/workspace/WM_Detection_Server/src/data/" + name
+        checkDirectory = self.dir + "/" + name
         temp = list()
         for filename in os.listdir(checkDirectory):
                 if filename.endswith("t.npy"):

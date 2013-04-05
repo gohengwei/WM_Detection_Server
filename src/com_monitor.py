@@ -107,18 +107,24 @@ class ComMonitorThread(threading.Thread):
                 #print time_arr[1,data_ctr]
                 #print time_arr[1,data_ctr -1];
                 if self.data_ctr > 50 :      
-                    # print "file_ctr:" + str(self.file_ctr)
+                    #print "file_ctr:" + str(self.file_ctr)
                     #print self.time_arr[:,self.data_ctr -1]
                     #print self.time_in
-                    f = open('/home/gohew/workspace/WM_Detection_Server/src/data/fresh/manifest','r+')
-                    save(self.name + str(self.file_ctr),self.data_in[0:3,0:self.data_ctr])
-                    save(self.name + str(self.file_ctr) + "t",self.time_arr[0:3,0:self.data_ctr])
-                    f.seek(0)
-                    f.write(str(self.file_ctr))
-                    f.close()
-                    self.msg = self.msg + "Saved [" + str(time.clock()) + "]: " + self.name + str(self.file_ctr) + " Data points:"+ str(self.data_ctr) +"<br>"
-                    self.outerPlot.plotCapture(self.data_in[0:3,0:self.data_ctr],self.time_arr[0:3,0:self.data_ctr])
-                    self.file_ctr = self.file_ctr + 1
+                    tempStd =  std(self.data_in[1,0:self.data_ctr])
+                    print tempStd
+                    if tempStd > 0.5:
+                        f = open('/home/gohew/workspace/WM_Detection_Server/src/data/fresh/manifest','r+')
+                        save(self.name + str(self.file_ctr),self.data_in[0:3,0:self.data_ctr])
+                        save(self.name + str(self.file_ctr) + "t",self.time_arr[0:3,0:self.data_ctr])
+                        f.seek(0)
+                        f.write(str(self.file_ctr))
+                        f.close()
+                        self.msg = self.msg + "Saved [" + str(time.clock()) + "]: " + self.name + str(self.file_ctr) + " Data points:"+ str(self.data_ctr) +"<br>"
+                        self.outerPlot.plotCapture(self.data_in[0:3,0:self.data_ctr],self.time_arr[0:3,0:self.data_ctr])
+                        self.file_ctr = self.file_ctr + 1
+                    else:
+                        self.msg = self.msg + "<b>Bad Data</b><br>"
+                        
                 self.data_ctr = 0
                 self.xbee_ctr = 0
             elif self.xbee_ctr == 6:

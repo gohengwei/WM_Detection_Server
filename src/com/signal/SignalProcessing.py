@@ -35,7 +35,8 @@ class SignalClass(object):
         sigma = std(_data_arr)
         data_norm = copy(_data_arr) #To prevent original data array from being modified due to lists being mutable
         for i in range(0,_data_ctr) :
-            data_norm[i] = (data_norm[i] - u)/sigma
+            temp = (data_norm[i] - u)/sigma
+            data_norm[i] = temp
         fourier_val = fft.fft(data_norm)
         fourier_val = fft.fftshift(fourier_val)
         fourier_val = abs(fourier_val)

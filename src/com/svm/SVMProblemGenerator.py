@@ -19,75 +19,130 @@ class SVMProblemGenerator:
     '''
     freq_scale = arange(0,150,1)
     precision = 0.5
-    def __init__(self):
+    truncate = 70
+    offset = 10
+    period = 2
+    path = ""
+    def __init__(self,path):
         '''
         Constructor
         '''
-        signal = SignalClass()
+        self.signal = SignalClass()
+        self.title = "motion"
+        self.path = path
     
+    def setPath(self,dir):
+        self.path = dir
+    
+    def loadRange(self,path):
+        f = open(path)
+        f.seek(6)
+        ctr = 0
+        i = 0
+        min = [""]
+        max = [""]
+        for line in f:
+            min.append("")
+            max.append("")
+            for letter in line:
+                if letter == " ":
+                    ctr = ctr + 1
+                elif not letter =="\n":
+                    if ctr == 1:
+                        min[i] += letter
+                    elif ctr == 2:
+                        max[i] += letter
+            i = i + 1
+            ctr = 0
+        return min, max
     def generate(self):                
-        f = open('motion', 'wb')
-        f.seek(0)        
-        #Generate for Running Classification
-        os.chdir("/home/gohew/workspace/WM_Detection_Server/src/data/SVM_Running")
-        for files in os.listdir("."):
-            if files.endswith("t.npy"):
-                    print "t"
-            else: 
-                data_arr, time_arr, data_ctr = self.openFile(str(files))
-                fourier_val, freq, rate = self.calcFFT(data_arr[1,:],time_arr[1,:])
-                fourier_ave = self.normalizeFreq(fourier_val,freq)
-                #y-Label
-                f.write("+1 ")
-                #x nodes
-                for i in range(1,fourier_ave.size): 
-                    f.write(str(i) + ":" + str(fourier_ave[0,i]) + " ")
-                f.write("\n")
-        #Generate for Running Classification    
-        os.chdir("/home/gohew/workspace/WM_Detection_Server/src/data/SVM_Slow")
-        for files in os.listdir("."):
-            if files.endswith("t.npy"):
-                    print "t"
-            else: 
-                data_arr, time_arr, data_ctr = self.openFile(str(files))
-                fourier_val, freq, rate = self.calcFFT(data_arr[1,:],time_arr[1,:])
-                fourier_ave = self.normalizeFreq(fourier_val,freq)
-                #y-Label
-                f.write("+2 ")
-                #x nodes
-                for i in range(1,fourier_ave.size): 
-                    f.write(str(i) + ":" + str(fourier_ave[0,i]) + " ")
-                f.write("\n")
-        os.chdir("/home/gohew/workspace/WM_Detection_Server/src/data/SVM_Walking")
-        for files in os.listdir("."):
-            if files.endswith("t.npy"):
-                    print "t"
-            else: 
-                data_arr, time_arr, data_ctr = self.openFile(str(files))
-                fourier_val, freq, rate = self.signal.calcFFT(data_arr[1,:],time_arr[1,:])
-                fourier_ave = self.normalizeFreq(fourier_val,freq)
-                #y-Label
-                f.write("+3 ")
-                #x nodes
-                for i in range(1,fourier_ave.size): 
-                    f.write(str(i) + ":" + str(fourier_ave[0,i]) + " ")
-                f.write("\n")
-        f.close()
-        
+        f = [open('/home/gohew/workspace/WM_Detection_Server/src/problem/' + self.title + "top", 'wb'),
+             open('/home/gohew/workspace/WM_Detection_Server/src/problem/' + self.title + "mid", 'wb'),
+             open('/home/gohew/workspace/WM_Detection_Server/src/problem/' + self.title + "bot", 'wb')]    
+        class_ctr = [0,0,0]
+        for j in range(0,3):
+            f[j].seek(0)
+            #Generate for Running Classification
+            os.chdir(self.path + "/SVM_Running") 
+            for files in os.listdir("."):
+                if files.endswith("t.npy"):
+                        print "t"
+                else: 
+                    data_arr, time_arr, data_ctr = self.openFile(str(files))
+                    fourier_val, freq, rate = self.calcFFT(data_arr[j,:],time_arr[j,:])
+                    fourier_ave = self.normalizeFreq(fourier_val,freq)
+                    #y-Label
+                    f[j].write("+1 ")
+                    #x nodes
+                    for i in range(0,fourier_ave.size): 
+                        f[j].write(str(i + 1) + ":" + str(fourier_ave[0,i]) + " ")
+                    f[j].write("\n")
+                    if j == 0 :
+                        class_ctr[0] = class_ctr[0] + 1
+            #Generate for Running Classification    
+            os.chdir(self.path + "/SVM_Slow")
+            for files in os.listdir("."):
+                if files.endswith("t.npy"):
+                        print "t"
+                else: 
+                    data_arr, time_arr, data_ctr = self.openFile(str(files))
+                    fourier_val, freq, rate = self.calcFFT(data_arr[j,:],time_arr[j,:])
+                    fourier_ave = self.normalizeFreq(fourier_val,freq)
+                    #y-Label
+                    f[j].write("+2 ")
+                    #x nodes
+                    for i in range(0,fourier_ave.size): 
+                        f[j].write(str(i + 1) + ":" + str(fourier_ave[0,i]) + " ")
+                    f[j].write("\n")
+                    if(j == 0):
+                        class_ctr[1] = class_ctr[1] + 1
+                        
+            os.chdir(self.path + "/SVM_Walking")
+            for files in os.listdir("."):
+                if files.endswith("t.npy"):
+                        print "t"
+                else: 
+                    data_arr, time_arr, data_ctr = self.openFile(str(files))
+                    fourier_val, freq, rate = self.signal.calcFFT(data_arr[j,:],time_arr[j,:])
+                    fourier_ave = self.normalizeFreq(fourier_val,freq)
+                    #y-Label
+                    f[j].write("+3 ")
+                    #x nodes
+                    for i in range(0,fourier_ave.size): 
+                        f[j].write(str(i + 1) + ":" + str(fourier_ave[0,i]) + " ")
+                    f[j].write("\n")
+                    if(j == 0):
+                        class_ctr[2] = class_ctr[2] + 1
+            f[j].close()
+        return class_ctr
+
+    def setTitle(self,text):
+        self.title = text
         
     def openFile(self,filename):
         #Open data number from page
         index = str(filename).find(".npy")
         data_in = load(str(filename))
         data_ctr = data_in.size/3
-        print filename[0:index] +"t.npy"
+        #print filename[0:index] +"t.npy"
         time_arr = load(str(filename[0:index]) +"t.npy")
         return data_in,time_arr,data_ctr
-        
+    
+    def normalizeScale(self, X, low=0, high=1,minX=0,maxX=1):
+        #X = asanyarray(X)
+        #minX = min(X)
+        #maxX = max(X)
+        # Normalize to [0...1].    
+        X = X - minX
+        X = X / (maxX - minX)
+        # Scale to [low...high].
+        X = X * (high-low)
+        X = X + low
+        return X
+    
     def normalizeFreq(self,fourier_val,freq):
         fourier_ave = zeros((1,self.freq_scale.size))
         temp = list()
-        #'''print fourier_val
         j = 0
         m = 0
         while freq[m] < 0:
@@ -115,8 +170,14 @@ class SVMProblemGenerator:
                 m = m + k
             else:
                 j = j + 1
-        return fourier_ave
-
+        '''
+            Reduce the number of features by taking samples of 2Hz intervals and truncating the range to 1 - 60
+        '''
+        fourier_final = zeros((1,(self.truncate - self.offset) / self.period))
+        for i in range(self.offset,self.truncate):
+            if(not i % self.period):
+                fourier_final[0,i/2 - 5 ] = fourier_ave[0,i]
+        return fourier_final
 
     '''
     *****************************************************

@@ -7,7 +7,6 @@ from numpy import *
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import struct
-from scipy import signal
 import mpl_toolkits.mplot3d.axes3d as p3
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
@@ -35,6 +34,8 @@ import os
     *****************************************************
 '''
 class VisualizerClass(QWidget):
+    path = ""
+    dir = '/home/gohew/workspace/WM_Detection_Server/src/data'
     data_in = zeros((3,5000)) 
     time_arr = zeros((3,5000)) 
     sample_rate = [0,0,0]
@@ -48,6 +49,7 @@ class VisualizerClass(QWidget):
         super(VisualizerClass, self).__init__()
         
         #Visualizer.__init__(self)
+        self.SVMClass = SVMProblemGenerator(self.path)
         self.initUI()
         self.center()
         
@@ -78,32 +80,40 @@ class VisualizerClass(QWidget):
         
         self.data_l = QLabel("Data Panel")
         self.data_l2 = QLabel("Select Directory")
+        self.dirBtn = QPushButton("Select")
+        self.dirLineEdit = QLineEdit()
+        self.dirLineEdit.setEnabled(False)
         self.data_l3 = QLabel("Select File")
         self.refreshBtn = QPushButton('Refresh')
+        self.selectBtn = QPushButton('Select')
         self.catBox = QComboBox()
         self.comboBox = QComboBox()
-        self.fourierBtn = QPushButton("Fourier Analysis")
+        self.titleLabel = QLabel("Specify problem name:")
+        self.titleBox = QLineEdit()
+        self.titleBox.setFrame(False)
+        titleLayout = QHBoxLayout()
+        titleLayout.addWidget(self.titleLabel)
+        titleLayout.addWidget(self.titleBox)
+        self.fileLabel = QLabel("Select SVM folder")
+        self.fileLineEdit = QLineEdit()
+        self.fileBtn = QPushButton("Select")
+        self.fileLineEdit.setEnabled(False)
         self.svmBtn = QPushButton("Generate SVM Problem")
         dataPanel_layout = QVBoxLayout()
         dataPanel_layout.addWidget(self.data_l)
         dataPanel_layout.addWidget(self.refreshBtn)
         dataPanel_layout.addWidget(self.data_l2)
+        dataPanel_layout.addWidget(self.selectBtn)
+        dataPanel_layout.addWidget(self.dirLineEdit)
         dataPanel_layout.addWidget(self.catBox)
         dataPanel_layout.addWidget(self.data_l3)
         dataPanel_layout.addWidget(self.comboBox)
         dataPanel_layout.addWidget(self.textBrowser)
-        dataPanel_layout.addWidget(self.fourierBtn)
+        dataPanel_layout.addLayout(titleLayout)
+        dataPanel_layout.addWidget(self.fileLabel)
+        dataPanel_layout.addWidget(self.fileLineEdit)
+        dataPanel_layout.addWidget(self.fileBtn)
         dataPanel_layout.addWidget(self.svmBtn)
-        # Main frame and layout
-        #
-        #main_layout = QHBoxLayout()
-        #main_layout.addLayout(testLayout)
-        #main_layout.addStretch(1)
-        #main_layout.addLayout(dataPanel_layout)
-        #main_layout.addWidget(self.graph)
-        #self.main_frame.setLayout(main_layout)
-        #self.setCentralWidget(self.main_frame)
-        
         hbox = QHBoxLayout()
         hbox.addLayout(vbox)
         hbox.addLayout(dataPanel_layout)
@@ -117,20 +127,28 @@ class VisualizerClass(QWidget):
         self.initRefreshBtn()
         #self.center()
         self.initCB()
-        self.connect(self.fourierBtn,SIGNAL("clicked()"),self.openAnalysis)
         self.connect(self.svmBtn,SIGNAL("clicked()"),self.openSVMGenerator)
+        self.connect(self.fileBtn,SIGNAL("clicked()"),self.save_file)
+        self.connect(self.selectBtn,SIGNAL("clicked()"),self.save_dir)
         self.show()
         
     def openDir(self):
-        for dirname, dirnames, filenames in os.walk('/home/gohew/workspace/WM_Detection_Server/src/data'):
+        for dirname, dirnames, filenames in os.walk(self.dir):
         # print path to all subdirectories first.
             for subdirname in dirnames:
                 print os.path.join(dirname, subdirname)
                 self.catBox.addItem(str(subdirname))
     
     def openSVMGenerator(self):
-        self.SVMClass = SVMProblemGenerator()
-        self.SVMClass.generate()
+        self.SVMClass.setTitle(self.titleBox.text())
+        class_ctr = self.SVMClass.generate()
+        self.showDialog(class_ctr)
+        
+    
+    def showDialog(self,class_ctr):
+        
+        QMessageBox.about(self, "SVM Problem Generator", "Problem generation successful!\nProblem generated on:\n" + str(class_ctr[0]) +" Running\n" + 
+                          str(class_ctr[1]) +" Slow walk\n" + str(class_ctr[2]) + " Walking\n" + "Total:" + str(class_ctr[0] +class_ctr[1] + class_ctr[2]))
         
     def save_plot(self):
         file_choices = "PNG (*.png)|*.png"
@@ -142,6 +160,22 @@ class VisualizerClass(QWidget):
             self.canvas.print_figure(path, dpi=self.dpi)
             self.statusBar().showMessage('Saved to %s' % path, 2000)    
     
+    def save_file(self):
+        path = QFileDialog.getExistingDirectory(self, "Test","/home/gohew/workspace/WM_Detection_Server/src/")
+
+        if path:
+            self.fileLineEdit.setText(str(path))
+            self.path = str(path)
+            self.SVMClass.setPath(self.path)
+    
+    def save_dir(self):
+        path = QFileDialog.getExistingDirectory(self, "Test","/home/gohew/workspace/WM_Detection_Server/src/")
+        
+        if path:
+            self.dirLineEdit.setText(str(path))
+            self.dir = str(path)
+            
+    
     def center(self):
         
         qr = self.frameGeometry()
@@ -150,10 +184,6 @@ class VisualizerClass(QWidget):
         self.move(qr.topLeft())
         
     #  def initGraph(self):    
-        
-    def openAnalysis(self):
-        self.fAnalysis = FourierClass()
-        self.fAnalysis.show()
     def initRefreshBtn(self):
         self.refreshBtn.clicked.connect(self.buttonClicked)
         
@@ -190,7 +220,7 @@ class VisualizerClass(QWidget):
            
     def onCatActivated(self,text):
         self.comboBox.clear()
-        os.chdir("/home/gohew/workspace/WM_Detection_Server/src/data/" + text)
+        os.chdir(self.dir +"/" + text)
         for files in os.listdir("."):
             if files.endswith(".npy"):
                 if files.endswith("t.npy"):
@@ -230,8 +260,8 @@ class VisualizerClass(QWidget):
         u = np.mean(_data_arr)
         sigma = np.std(_data_arr)
         data_norm = np.copy(_data_arr) #To prevent original data array from being modified due to lists being mutable
-        self.textBrowser.setText("mean: <b>" + str(round(u,2)) + "</b><br>" +"std: <b>" + str(round(sigma,2)) + "</b>" + "<br>Sampling rate:<b>" 
-                                 + str(round(sample_rate,2)) + "</b>" + "<br>Data pts: <b>" + str(_data_ctr) + "</b><br>")
+        self.textBrowser.setText("mean: <b>" + str(round(u,2)) + "</b><br>" +"std: <b>" + str(round(sigma,2)) + "</b>" + "<br>Sampling Rate:<b>" 
+                                 + str(round(1000/sample_rate,2)) + "</b>" + "<br>Data pts: <b>" + str(_data_ctr) + "</b><br>")
         for i in range(0,_data_ctr) :
             data_norm[i] = (data_norm[i] - u)/sigma
         fourier_val = fft.fft(data_norm)
