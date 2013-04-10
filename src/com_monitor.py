@@ -119,6 +119,7 @@ class ComMonitorThread(threading.Thread):
                         f.seek(0)
                         f.write(str(self.file_ctr))
                         f.close()
+                        
                         self.msg = self.msg + "Saved [" + str(time.clock()) + "]: " + self.name + str(self.file_ctr) + " Data points:"+ str(self.data_ctr) +"<br>"
                         self.outerPlot.plotCapture(self.data_in[0:3,0:self.data_ctr],self.time_arr[0:3,0:self.data_ctr])
                         self.file_ctr = self.file_ctr + 1

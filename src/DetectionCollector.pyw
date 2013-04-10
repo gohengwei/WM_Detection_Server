@@ -21,7 +21,7 @@ import Queue
 import numpy as np
 from numpy import *
 from com.signal.SignalProcessing import SignalClass
-from com.processor.FourierClass import FourierClass
+from com.processor.FourierClass import FourierAnalysis
 from svm import *
 from svmutil import *
 from com.processor.DetectionProcessor import VisualizerClass
@@ -31,7 +31,7 @@ from eblib.utils import get_all_from_queue, get_item_from_queue
 from livedatafeed import LiveDataFeed
 
 class PlottingDataMonitor(QMainWindow):
-    xbee = ["TOP","MID","BOT"]
+    xbee = ["top","mid","bot"]
     penColor = ["red","limegreen","blue"]
     def __init__(self, parent=None):
         self.signal = SignalClass()
@@ -48,6 +48,8 @@ class PlottingDataMonitor(QMainWindow):
         self.model = None
         self.min = None
         self.max = None
+        self.predictedStr = ["None","None","None"]
+        self.predictName = "motion10"
         self.predicted = 0
         self.livefeed = [LiveDataFeed(),LiveDataFeed(),LiveDataFeed()]
         self.temperature_samples = [list(),list(),list()]
@@ -70,7 +72,7 @@ class PlottingDataMonitor(QMainWindow):
         plot.setCanvasBackground(Qt.black)
         plot.setAxisTitle(Qwt.QwtPlot.xBottom, 'Time')
         plot.setAxisScale(Qwt.QwtPlot.xBottom, 0, 10, 1)
-        plot.setAxisTitle(Qwt.QwtPlot.yLeft, 'RSSI')
+        plot.setAxisTitle(Qwt.QwtPlot.yLeft, 'RSSI -dBm')
         plot.setAxisScale(Qwt.QwtPlot.yLeft, 30, 75, 20)
         plot.replot()
         
@@ -179,6 +181,13 @@ class PlottingDataMonitor(QMainWindow):
         knob_layout = QVBoxLayout()
         knob_layout.addWidget(self.updatespeed_knob)
         knob_layout.addWidget(self.knob_l)
+        self.predict_l = QLabel('Prediction Panel')
+        self.predict_l.setAlignment(Qt.AlignLeft)
+        self.predictTB = QTextBrowser()
+        self.predictTB.setStyleSheet("QTextBrowser { background-color : black; color :green; }")
+        predictLayout = QVBoxLayout()
+        predictLayout.addWidget(self.predict_l)
+        predictLayout.addWidget(self.predictTB)
         
         self.debug_l = QLabel('Messages Panel')
         self.debug_l.setAlignment(Qt.AlignLeft)
@@ -227,6 +236,7 @@ class PlottingDataMonitor(QMainWindow):
         debug_layout.addLayout(stats_layout)
         debug_layout.addWidget(portname_groupbox)
         #debug_layout.addWidget(self.debugPanel)
+        debug_layout.addLayout(predictLayout)
         debug_layout.addLayout(knob_layout)
         
         fftplot_layout = QVBoxLayout()
@@ -248,7 +258,6 @@ class PlottingDataMonitor(QMainWindow):
         top_layout = QVBoxLayout()
         top_layout.addLayout(overallplot_layout)
         top_layout.addLayout(debug_layout)
-    
         
         # Main frame and layout
         #
@@ -263,7 +272,7 @@ class PlottingDataMonitor(QMainWindow):
         
         self.main_tab.addTab(self.main_frame, "Data Collection")
         self.main_tab.addTab(self.Visualizer, "Waveform Analysis")
-        self.main_tab.addTab(FourierClass(), "Fourier Analysis")
+        self.main_tab.addTab(FourierAnalysis(), "Fourier Analysis")
         self.setCentralWidget(self.main_tab)
         self.set_actions_enable_state()
         
@@ -416,6 +425,7 @@ class PlottingDataMonitor(QMainWindow):
             nothing is updated.
         """
         statsMsg = ""    
+        predictMsg = ""
         if self.com_monitor:
             if self.data_arr != None and self.time_arr != None:
                 tempStd =  np.std(self.data_arr[1,:])
@@ -449,41 +459,39 @@ class PlottingDataMonitor(QMainWindow):
                 self.plot[i].setAxisScale(Qwt.QwtPlot.xBottom, xdata[0], max(20, xdata[-1]))
                 self.curve[i].setData(xdata, ydata)
                 self.plot[i].replot()
-        predictedStr = ""
-        if self.predicted == 0:
-            predictedStr = "None"
-        elif self.predicted == 1:
-            predictedStr = "Running"
-        elif self.predicted == 2:
-            predictedStr = "Slow Walking"
-        elif self.predicted == 3:       
-            predictedStr = "Walking"
-            
-        statsMsg = statsMsg + "Predicted Output:<font color=red size=66><b>" + predictedStr + "</b></font><"; 
+                
+        predictMsg = predictMsg + "<font color=green size='6'>Top:<b>" + self.predictedStr[0] + "</b><br>" + "Mid:<b>" + self.predictedStr[1] + "</b><br>"+ "Bot:<b>" + self.predictedStr[2] + "</b><br>"
         self.statsPanel.setText(statsMsg)
-                #self.thermo.setValue(avg)
+        self.predictTB.setText(predictMsg)
     
     def plotCapture(self,data_arr,time_arr):
         self.data_arr = data_arr
         self.time_arr = time_arr
+        predicted= [0,0,0]
         svm_dict = [dict()]
-        #svm_dict = dict()
-        fourier_data ,freq_data, rate_data = self.signal.calcFFT(self.data_arr[0,:], self.time_arr[0,:])
-        norm_fourier = self.Visualizer.SVMClass.normalizeFreq(fourier_data, freq_data)
         svm_label = [2]
-        for i in range(0,norm_fourier.size):
-            normScale = self.Visualizer.SVMClass.normalizeScale(norm_fourier[0,i],0,1, float(self.min[i]), float(self.max[i]))
-            tempDict = {i + 1:normScale}
-            svm_dict[0].update(tempDict)
-        #print svm_dict
-        #print svm_label
-        print svm_dict[0]
-        p_labs, p_acc, p_vals = svm_predict(svm_label, svm_dict, self.model)
-        
-        self.predicted = p_labs[0]
-        print p_labs
-        print p_acc
-        print p_vals
+        #svm_dict = dict()
+        for j in range(0,3):
+            fourier_data ,freq_data, rate_data = self.signal.calcFFT(self.data_arr[j,:], self.time_arr[j,:])
+            norm_fourier = self.Visualizer.SVMClass.normalizeFreq(fourier_data, freq_data)
+            for i in range(0,norm_fourier.size):
+                normScale = self.Visualizer.SVMClass.normalizeScale(norm_fourier[0,i],0,1, float(self.min[i]), float(self.max[i]))
+                tempDict = {i + 1:normScale}
+                svm_dict[0].update(tempDict)
+            print svm_dict[0]
+            p_labs, p_acc, p_vals = svm_predict(svm_label, svm_dict, self.model[j])
+            predicted[j] = p_labs[0]
+            print p_labs
+            print p_acc
+            print p_vals
+            if predicted[j] == 0:
+                self.predictedStr[j] = "None"
+            elif predicted[j] == 1:
+                self.predictedStr[j] = "Run"
+            elif predicted[j] == 2:
+                self.predictedStr[j] = "Slow Walk"
+            elif predicted[j] == 3:       
+                self.predictedStr[j] = "Walk"   
         
     def read_serial_data(self):
         """ Called periodically by the update timer to read data
@@ -524,8 +532,10 @@ class PlottingDataMonitor(QMainWindow):
         return action
 
     def initSVM(self):
-        self.model = svm_load_model("/home/gohew/workspace/WM_Detection_Server/src/problem/motion10top.scale.model")
-        self.min,self.max = self.Visualizer.SVMClass.loadRange("/home/gohew/workspace/WM_Detection_Server/src/problem/range10")
+        self.model = [svm_model(),svm_model(),svm_model()]
+        for i in range(0,3):
+            self.model[i] = svm_load_model("/home/gohew/workspace/WM_Detection_Server/src/problem/" + self.predictName + self.xbee[i] + ".scale.model")
+            self.min,self.max = self.Visualizer.SVMClass.loadRange("/home/gohew/workspace/WM_Detection_Server/src/problem/" + self.predictName + self.xbee[i]+ ".range")
 def main():
     app = QApplication(sys.argv)
     form = PlottingDataMonitor()

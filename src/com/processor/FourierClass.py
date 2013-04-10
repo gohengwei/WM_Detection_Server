@@ -24,10 +24,7 @@ import matplotlib.mlab as mlab
 import numpy as np
 from com.signal.SignalProcessing import SignalClass
 
-class FourierClass(QWidget):
-    '''
-    classdocs
-    '''
+class FourierAnalysis(QWidget):
     dir = '/home/gohew/workspace/WM_Detection_Server/src/data'
     ave_sample_rate = 4
     fourier_ave = None
@@ -40,7 +37,7 @@ class FourierClass(QWidget):
         '''
         Constructor
         '''
-        super(FourierClass, self).__init__()
+        super(FourierAnalysis, self).__init__()
         #FourierWindow.__init__(self)
         self.signal = SignalClass()
         self.initUI()
@@ -53,8 +50,8 @@ class FourierClass(QWidget):
         self.fig = Figure((10,5), dpi=self.dpi)
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self)
-        self.ax = self.fig.add_subplot(111,autoscale_on='True',title="Mean Frequency Amplitude vs Frequency")
-        #self.bx = self.fig.add_subplot(212,autoscale_on='True',title="Standard Deviation of Amplitude vs Frequency")
+        self.ax = self.fig.add_subplot(211,autoscale_on='True',title="Mean of Fourier Transform")
+        self.bx = self.fig.add_subplot(212,autoscale_on='True',title="Standard Deviation of Fourier Transform")
         self.mpl_toolbar = NavigationToolbar(self.canvas, self)
         vbox = QVBoxLayout()
         vbox.addWidget(self.canvas)
@@ -103,13 +100,21 @@ class FourierClass(QWidget):
             
     def onActivated(self,text):
         self.ax.clear()
+        self.bx.clear()
         #self.bx.clear()
         self.list_ctr = 0
         self.fourier_ave = zeros((3,150))
+        self.fourier_std = zeros((3,150))
+        self.std_val = zeros((3,150))
         self.calcStatistics(text)
         for j in range(0,3):
+            self.fourier_std[j] = np.delete(self.fourier_std[j],s_[self.list_ctr], axis=0)
+            print self.fourier_std[j].shape
             for i in range(0,len(self.freq_scale)):
                 self.fourier_ave[j,i] = self.fourier_ave[j,i] / self.list_ctr
+                self.std_val[j,:] = np.std(self.fourier_std[j],axis=0)
+        #print self.std_val
+        print self.std_val.shape
         self.plotGraph()
     
     def center(self):
@@ -126,18 +131,20 @@ class FourierClass(QWidget):
             #print self.data_in
             self.textBrowser.setText("No. of Samples: <b>" + str(self.list_ctr) + "</b><br>")
             #print self.fourier_ave
-            self.ax.axis([0,150,0,160])
+            self.ax.axis([0,130,0,150])
             self.ax.plot(self.freq_scale[0:self.freq_scale.size],self.fourier_ave[i,0:self.freq_scale.size],self.color[i],label=self.xbee[i])
+            self.ax.set_title("Mean of Fourier Transform")
             #plt.subplot(2,3 , i + 4)
             #print freq
-            #self.bx.set_xlabel('Freq(Hz)')
-            #self.bx.set_ylabel('Amplitude')
-            #self.bx.axis([0,150,0,160])
-            # self.bx.plot(freq,self.fourier_val[i,0:self.data_ctr],self.color[i],label=self.xbee[i]) 
-  
+            self.bx.set_xlabel('Freq(Hz)')
+            self.bx.set_ylabel('Amplitude')
+            self.bx.axis([0,150,0,130])
+            self.bx.set_title("Standard Deviation of Fourier Transform")
+            self.bx.plot(self.freq_scale[0:self.freq_scale.size],self.std_val[i,0:self.freq_scale.size],self.color[i],label=self.xbee[i]) 
         handles, labels = self.ax.get_legend_handles_labels()
         self.ax.legend(handles, labels,loc="upper right",
            ncol=2)
+        self.fig.tight_layout()
         '''
         handles, labels = self.bx.get_legend_handles_labels()
         self.bx.legend(handles, labels,loc="upper right",
@@ -156,12 +163,12 @@ class FourierClass(QWidget):
     def calcStatistics(self,name):
         checkDirectory = self.dir + "/" + name
         temp = list()
+        self.fourier_std = [zeros((1,150)),zeros((1,150)),zeros((1,150))]
         for filename in os.listdir(checkDirectory):
                 if filename.endswith("t.npy"):
                     print "t"
                 else: 
                     cur_data, cur_time, cur_ctr = self.openFile(checkDirectory,filename)
-                    self.fourier_std = [zeros((1,150)),zeros((1,150)),zeros((1,150))]
                     for i in range(0,3):
                         fourier_val,freq, rate = self.signal.calcFFT(cur_data[i,0:cur_ctr],cur_time[i,0:cur_ctr])
                         #'''print fourier_val
@@ -169,6 +176,7 @@ class FourierClass(QWidget):
                         m = 0
                         while freq[m] < 0:
                             m = m + 1
+                        #Loop to iterate over all the data points
                         while j < self.freq_scale.size and m < freq.size:
                             if abs(freq[m] - self.freq_scale[j]) < 0.5:
                                 k = 0
@@ -185,18 +193,20 @@ class FourierClass(QWidget):
                                 print str(j) + ":"
                                 print temp
                                 '''
+                                #Calculate the mean of all the values within +-0.5
                                 for l in range(0,len(temp)):
                                     mean_val = temp[l] + mean_val
                                 mean_val = mean_val/len(temp)
                                 self.fourier_ave[i,j] = mean_val + self.fourier_ave[i,j] 
+                                self.fourier_std[i][self.list_ctr,j] = mean_val
                                 # self.fourier_std[i][self.list_ctr,j] = mean_val
                                 # print self.fourier_std[i]
                                 m = m + k
                             else:
                                 j = j + 1
-                    #np.concatenate(self.fourier_std[1],zeros(1,150))
-                    #np.concatenate(self.fourier_std[2],zeros(1,150))
-                    #np.concatenate(self.fourier_std[3],zeros(1,150))
+                        self.fourier_std[i] = np.concatenate((self.fourier_std[i],zeros((1,150))),axis=0)
+                    print self.fourier_std[2]
+                    print self.fourier_std[0].shape
                     self.list_ctr = self.list_ctr + 1
                 
     def openFile(self,dir,filename):

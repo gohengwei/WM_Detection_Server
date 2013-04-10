@@ -4,6 +4,7 @@ Created on Feb 25, 2013
 @author: gohew
 '''
 from numpy import *
+import scipy.io
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import struct
@@ -17,7 +18,7 @@ from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as Naviga
 from matplotlib.figure import Figure
 import matplotlib.mlab as mlab
 #from com.ui.visualizer import Visualizer
-from com.processor.FourierClass import FourierClass
+from com.processor.FourierClass import FourierAnalysis
 import numpy as np
 from com.svm.SVMProblemGenerator import SVMProblemGenerator
 #UI imports
@@ -78,7 +79,7 @@ class VisualizerClass(QWidget):
         vbox.addWidget(self.canvas)
         vbox.addWidget(self.mpl_toolbar)
         
-        self.data_l = QLabel("Data Panel")
+        self.dataGroupBox = QGroupBox("Data Panel")
         self.data_l2 = QLabel("Select Directory")
         self.dirBtn = QPushButton("Select")
         self.dirLineEdit = QLineEdit()
@@ -99,21 +100,31 @@ class VisualizerClass(QWidget):
         self.fileBtn = QPushButton("Select")
         self.fileLineEdit.setEnabled(False)
         self.svmBtn = QPushButton("Generate SVM Problem")
+        self.svmGroupBox = QGroupBox("SVM Problem Generator")
+        svmlayout = QVBoxLayout()
         dataPanel_layout = QVBoxLayout()
-        dataPanel_layout.addWidget(self.data_l)
-        dataPanel_layout.addWidget(self.refreshBtn)
-        dataPanel_layout.addWidget(self.data_l2)
-        dataPanel_layout.addWidget(self.selectBtn)
-        dataPanel_layout.addWidget(self.dirLineEdit)
-        dataPanel_layout.addWidget(self.catBox)
-        dataPanel_layout.addWidget(self.data_l3)
-        dataPanel_layout.addWidget(self.comboBox)
-        dataPanel_layout.addWidget(self.textBrowser)
-        dataPanel_layout.addLayout(titleLayout)
-        dataPanel_layout.addWidget(self.fileLabel)
-        dataPanel_layout.addWidget(self.fileLineEdit)
-        dataPanel_layout.addWidget(self.fileBtn)
-        dataPanel_layout.addWidget(self.svmBtn)
+        dataGroupBox_layout = QVBoxLayout()
+        dir_layout = QHBoxLayout()
+        dir2_layout = QHBoxLayout()
+        dataGroupBox_layout.addWidget(self.refreshBtn)
+        dir_layout.addWidget(self.data_l2)
+        dir_layout.addWidget(self.selectBtn)
+        dataGroupBox_layout.addLayout(dir_layout)
+        dataGroupBox_layout.addWidget(self.dirLineEdit)
+        dataGroupBox_layout.addWidget(self.catBox)
+        dataGroupBox_layout.addWidget(self.data_l3)
+        dataGroupBox_layout.addWidget(self.comboBox)
+        dataGroupBox_layout.addWidget(self.textBrowser)
+        self.dataGroupBox.setLayout(dataGroupBox_layout)
+        svmlayout.addLayout(titleLayout)
+        dir2_layout.addWidget(self.fileLabel)
+        dir2_layout.addWidget(self.fileBtn)
+        svmlayout.addLayout(dir2_layout)
+        svmlayout.addWidget(self.fileLineEdit)
+        svmlayout.addWidget(self.svmBtn)
+        self.svmGroupBox.setLayout(svmlayout)
+        dataPanel_layout.addWidget(self.dataGroupBox)
+        dataPanel_layout.addWidget(self.svmGroupBox)
         hbox = QHBoxLayout()
         hbox.addLayout(vbox)
         hbox.addLayout(dataPanel_layout)
@@ -193,7 +204,7 @@ class VisualizerClass(QWidget):
         for i in range(0,3):
             self.fourier_val[i,0:self.data_ctr],freq, self.sample_rate[i] = self.calcFFT(self.data_in[i,0:self.data_ctr], self.time_arr[i,0:self.data_ctr])
             self.ax.set_xlabel('Time(ms)')
-            self.ax.set_ylabel('RSSI')
+            self.ax.set_ylabel('RSSI(-dBm)')
             #print self.data_in
             self.ax.plot(self.time_arr[i,0:self.data_ctr -2],self.data_in[i,0:self.data_ctr -2],self.color[i],label=self.xbee[i])
             self.bx.set_xlabel('Freq(Hz)')
@@ -264,6 +275,7 @@ class VisualizerClass(QWidget):
                                  + str(round(1000/sample_rate,2)) + "</b>" + "<br>Data pts: <b>" + str(_data_ctr) + "</b><br>")
         for i in range(0,_data_ctr) :
             data_norm[i] = (data_norm[i] - u)/sigma
+        scipy.io.savemat('/home/gohew/workspace/WM_Detection_Server/src/matlab/cwt.mat',dict(data_norm=data_norm)) 
         fourier_val = fft.fft(data_norm)
         fourier_val = fft.fftshift(fourier_val)
         #print fourier_val

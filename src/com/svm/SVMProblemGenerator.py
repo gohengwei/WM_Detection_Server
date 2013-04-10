@@ -19,8 +19,8 @@ class SVMProblemGenerator:
     '''
     freq_scale = arange(0,150,1)
     precision = 0.5
-    truncate = 70
-    offset = 10
+    truncate = 66
+    offset = 6
     period = 2
     path = ""
     def __init__(self,path):
