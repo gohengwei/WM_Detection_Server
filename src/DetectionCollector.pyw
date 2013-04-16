@@ -33,6 +33,9 @@ from livedatafeed import LiveDataFeed
 class PlottingDataMonitor(QMainWindow):
     xbee = ["top","mid","bot"]
     penColor = ["red","limegreen","blue"]
+    fourier_data = [list(),list(),list()]
+    freq_data = [list(),list(),list()]
+    
     def __init__(self, parent=None):
         self.signal = SignalClass()
         super(PlottingDataMonitor, self).__init__(parent)
@@ -234,9 +237,9 @@ class PlottingDataMonitor(QMainWindow):
         debug_layout = QHBoxLayout()
         debug_layout.addLayout(panel_layout)
         debug_layout.addLayout(stats_layout)
-        debug_layout.addWidget(portname_groupbox)
         #debug_layout.addWidget(self.debugPanel)
         debug_layout.addLayout(predictLayout)
+        debug_layout.addWidget(portname_groupbox)
         debug_layout.addLayout(knob_layout)
         
         fftplot_layout = QVBoxLayout()
@@ -435,8 +438,8 @@ class PlottingDataMonitor(QMainWindow):
                         self.fftplot1.replot()
                     self.fftplot1.setAxisScale(Qwt.QwtPlot.xBottom, 0, self.time_arr[1,self.time_arr.size/3 -1], 500)
                     for i in range(0,3):
-                        fourier_val ,freq, rate = self.signal.calcFFT(self.data_arr[i,:], self.time_arr[i,:])
-                        self.fftcurve2[i].setData(freq, fourier_val)
+                        #fourier_val ,freq, rate = self.signal.calcFFT(self.data_arr[i,:], self.time_arr[i,:])
+                        self.fftcurve2[i].setData(self.freq_data[i], self.fourier_data[i])
                         self.fftplot2.replot()
             self.debugPanel.setText(self.com_monitor.msg)
         self.debugPanel.verticalScrollBar().setValue(
@@ -472,8 +475,8 @@ class PlottingDataMonitor(QMainWindow):
         svm_label = [2]
         #svm_dict = dict()
         for j in range(0,3):
-            fourier_data ,freq_data, rate_data = self.signal.calcFFT(self.data_arr[j,:], self.time_arr[j,:])
-            norm_fourier = self.Visualizer.SVMClass.normalizeFreq(fourier_data, freq_data)
+            self.fourier_data[j] ,self.freq_data[j], rate_data = self.signal.calcFFT(self.data_arr[j,:], self.time_arr[j,:])
+            norm_fourier = self.Visualizer.SVMClass.normalizeFreq(self.fourier_data[j], self.freq_data[j])
             for i in range(0,norm_fourier.size):
                 normScale = self.Visualizer.SVMClass.normalizeScale(norm_fourier[0,i],0,1, float(self.min[i]), float(self.max[i]))
                 tempDict = {i + 1:normScale}

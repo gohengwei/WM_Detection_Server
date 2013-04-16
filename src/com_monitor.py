@@ -45,7 +45,7 @@ class ComMonitorThread(threading.Thread):
     xbee_ave = [0,0,0]
     name = "data"
     isMotion = False
-    
+    vlock = threading.Lock()
     def __init__(   self, outer,
                     data_q, error_q, msg,file_t,  
                     port_num,
@@ -97,7 +97,9 @@ class ComMonitorThread(threading.Thread):
             if str(data) == '\n' :
                 self.xbee_ctr = 0
                 if self.isMotion:
+                    self.vlock.acquire()
                     self.data_ctr = self.data_ctr + 1
+                    self.vlock.release()
             elif str(data) == "{":
                 self.msg = self.msg + "incoming...<br>"
                 self.isMotion = True         
@@ -106,10 +108,7 @@ class ComMonitorThread(threading.Thread):
                 self.isMotion = False
                 #print time_arr[1,data_ctr]
                 #print time_arr[1,data_ctr -1];
-                if self.data_ctr > 50 :      
-                    #print "file_ctr:" + str(self.file_ctr)
-                    #print self.time_arr[:,self.data_ctr -1]
-                    #print self.time_in
+                if self.data_ctr > 200 and self.data_ctr < 1500 :      
                     tempStd =  std(self.data_in[1,0:self.data_ctr])
                     print tempStd
                     if tempStd > 0.5:
@@ -119,13 +118,15 @@ class ComMonitorThread(threading.Thread):
                         f.seek(0)
                         f.write(str(self.file_ctr))
                         f.close()
-                        
                         self.msg = self.msg + "Saved [" + str(time.clock()) + "]: " + self.name + str(self.file_ctr) + " Data points:"+ str(self.data_ctr) +"<br>"
                         self.outerPlot.plotCapture(self.data_in[0:3,0:self.data_ctr],self.time_arr[0:3,0:self.data_ctr])
+                        self.vlock.acquire()
                         self.file_ctr = self.file_ctr + 1
+                        self.vlock.release()
                     else:
                         self.msg = self.msg + "<b>Bad Data</b><br>"
-                        
+                else:
+                    self.msg = self.msg + "<b>Bad Data</b><br>"
                 self.data_ctr = 0
                 self.xbee_ctr = 0
             elif self.xbee_ctr == 6:
@@ -136,11 +137,13 @@ class ComMonitorThread(threading.Thread):
                     Save time lapse of Xbee into array
                 '''
                 if self.isMotion:
+                    self.vlock.acquire()
                     temp = self.data_ctr -1
                     xbee_ptr = (self.xbee_ctr -1)/2
                     self.time_arr[xbee_ptr,self.data_ctr] = self.time_arr[xbee_ptr,temp] + ord(data)
                     #print "1:" + str(self.time_arr[(self.xbee_ctr -1)/2,self.data_ctr]) + "2:" + str(self.time_arr[(self.xbee_ctr-1)/2,self.data_ctr -1])
                     #self.time_in[(self.xbee_ctr-1)/2] = self.time_in[(self.xbee_ctr - 1)/2] + ord(data);
+                    self.vlock.release()
             elif len(data) > 0:
                 '''
                     Save rssi data of Xbee into array
@@ -152,7 +155,9 @@ class ComMonitorThread(threading.Thread):
                 
                 #self.xbee_ctr = self.xbee_ctr + 1
             if len(data) > 0 and str(data) != '\n' and str(data)!= '}' and str(data)!='{': 
+                self.vlock.acquire()
                 self.xbee_ctr = self.xbee_ctr + 1 
+                self.vlock.release()
                 # print str(ord(data))+ " " + str(self.xbee_ctr)
         # clean up
         if self.serial_port:
